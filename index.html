@@ -26,6 +26,7 @@ button.sec{background:#fff;color:var(--g);border:1px solid var(--g)}button:disab
 .sec{font-style:italic;font-weight:700;margin:12px 0 6px}
 table.pv{width:100%;border-collapse:collapse;margin-bottom:8px}.pv td,.pv th{border:1px solid #333;padding:6px 8px;font-size:13px}.pv th{background:#d9d9d9}.c{text-align:center}
 .big{font-size:17px}
+#school,#principal{font-size:18px;font-weight:700}input[readonly]{background:#eef3f0;color:#35483f}
 </style></head><body>
 <header><h1>Punjab Deworming Initiative (Round 5) – FORM 2</h1>
 <p>School Level: Treatment Summary Form</p>
@@ -64,7 +65,7 @@ table.pv{width:100%;border-collapse:collapse;margin-bottom:8px}.pv td,.pv th{bor
 <div><label for="used">Total # of tablets USED</label><input type="number" id="used" min="0" step="1" inputmode="numeric"><div class="hint">Tablets chewed and swallowed</div></div>
 <div><label for="wasted">Total # of tablets WASTED</label><input type="number" id="wasted" min="0" step="1" inputmode="numeric"><div class="hint">Tablets spat out or lost</div></div></div>
 <div class="sub">Total # of Medicine REMAINING &amp; to be RETURNED</div>
-<div class="grid"><div><label for="openT"># of Tablets in Opened Bottles</label><input type="number" id="openT" min="0" step="1" inputmode="numeric"></div><div><label for="sealed"># of Sealed bottles</label><input type="number" id="sealed" min="0" step="1" inputmode="numeric"></div></div>
+<div class="grid"><div><label for="openT"># of Tablets in Opened Bottles</label><input type="number" id="openT" min="0" step="1" inputmode="numeric"><div class="hint" id="openHint"></div></div><div><label for="sealed"># of Sealed bottles</label><input type="number" id="sealed" min="0" step="1" inputmode="numeric"></div></div>
 <div class="sub">Adverse Events (AEs)</div>
 <div class="grid"><div><label for="ae">Total # of Adverse Events referred to a local health facility</label><input type="number" id="ae" min="0" step="1" inputmode="numeric"></div></div>
 <div class="hint">Adverse Events are defined as a case of a very ill child requiring attention from medical staff (i.e. persistent nausea, abdominal pain, diarrhea, vomiting, etc.). Enter 0 where there is none.</div></div>
@@ -483,20 +484,35 @@ function check(d){
   if(d.cat==="Private school"&&!d.branch)er.push(["branch","Branch Name is required for a private school"]);
   if(d.contact&&!/^[0-9+\-\s]{7,16}$/.test(d.contact))er.push(["contact","Contact Number looks invalid"]);
   NUM.forEach(k=>{if(!(Number.isInteger(d[k])&&d[k]>=0))er.push([k,LBL[k]+": enter a whole number (0 if none)"])});
+  if(Number.isInteger(d.recv)&&Number.isInteger(d.used)&&Number.isInteger(d.wasted)&&d.sealed===0&&d.recv-d.used-d.wasted<0)er.push(["wasted","Tablets USED + WASTED cannot be greater than tablets RECEIVED"]);
   if(!er.length){
-    if(d.dwEM>d.enM||d.dwEF>d.enF)wn.push("Enrolled children dewormed is more than the total enrolled children.");
+    if(d.dwEM>d.enM)er.push(["dwEM","Enrolled children DEWORMED (Male) cannot be greater than enrolled children (Male) in the school register"]);
+    if(d.dwEF>d.enF)er.push(["dwEF","Enrolled children DEWORMED (Female) cannot be greater than enrolled children (Female) in the school register"]);
+    const tot=d.dwEM+d.dwEF+d.dwNM+d.dwNF;
+    if(d.used>tot)er.push(["used","Tablets USED ("+d.used+") cannot be greater than the total children dewormed, enrolled + non-enrolled ("+tot+")"]);
+  }
+  if(!er.length){
     if(d.used+d.wasted+d.openT>d.recv)wn.push("Tablets used + wasted + remaining in opened bottles is more than tablets received.");
     if(Object.values(d).some(v=>/[^\x20-\xFF]/.test(String(v))))wn.push("Some text is not in English letters; it will appear as “?” in the PDF (the Google Sheet keeps it as typed).");
   }
   return{er,wn};
 }
+function auto(){
+  const s=$("sealed").value.trim(),o=$("openT");
+  if(s!==""&&parseInt(s,10)===0){
+    const r=parseInt($("recv").value,10),u=parseInt($("used").value,10),w=parseInt($("wasted").value,10);
+    o.readOnly=true;o.value=[r,u,w].every(Number.isInteger)?Math.max(0,r-u-w):"";
+    $("openHint").textContent="Auto-calculated (sealed bottles = 0): Received − Used − Wasted";
+  }else{o.readOnly=false;$("openHint").textContent=""}
+}
+["recv","used","wasted","sealed"].forEach(i=>$(i).addEventListener("input",auto));
 function pv(d){
   const e=esc,r=(a,b)=>`<tr><th style="width:34%;text-align:left">${a}</th><td>${b}</td></tr>`;
   const tr=a=>`<tr class="c big">${a.map(v=>`<td>${v}</td>`).join("")}</tr>`;
   return `<div class="paper"><div class="c"><b>Punjab Deworming initiative (Round 5)</b></div>
 <h3 class="c">School Level: Treatment Summary Form <span class="tag">FORM 2</span></h3>
 <div class="sec">Section 1: School information (including enrollment data from classes 1-10)</div>
-<table class="pv">${r("School Name",e(d.school))}${r("Branch Name",e(d.branch)||"—")}${r("Category",e(d.cat))}${r("Principal/Head Teacher Name",e(d.principal))}${r("School Address",e(d.address))}${r("Contact Number",e(d.contact))}${r("Total # of enrolled children (classes 1-10)",`Male: <b>${d.enM}</b> &nbsp; Female: <b>${d.enF}</b> &nbsp; Total: <b>${d.enM+d.enF}</b>`)}${r("Signature &amp; Stamp","<i>(sign on the printed copy)</i>")}</table>
+<table class="pv">${r("School Name",`<b class="big">${e(d.school)}</b>`)}${r("Branch Name",e(d.branch)||"—")}${r("Category",e(d.cat))}${r("Principal/Head Teacher Name",`<b class="big">${e(d.principal)}</b>`)}${r("School Address",e(d.address))}${r("Contact Number",e(d.contact))}${r("Total # of enrolled children (classes 1-10)",`Male: <b>${d.enM}</b> &nbsp; Female: <b>${d.enF}</b> &nbsp; Total: <b>${d.enM+d.enF}</b>`)}${r("Signature &amp; Stamp","<i>(sign on the printed copy)</i>")}</table>
 <div class="sec">Section 2: Deworming treatment information from FORM 1A &amp; 1B</div>
 <table class="pv"><tr><th colspan="2">Total # of enrolled children DEWORMED (class 1-10)</th><th colspan="2">Total # of Non-enrolled children DEWORMED (5-14 years)</th></tr>
 <tr class="c"><th>Male<br><small>(FORM 1A)</small></th><th>Female<br><small>(FORM 1A)</small></th><th>Male<br><small>(FORM 1B)</small></th><th>Female<br><small>(FORM 1B)</small></th></tr>${tr([d.dwEM,d.dwEF,d.dwNM,d.dwNF])}</table>
@@ -523,11 +539,11 @@ function makePDF(d,save=true){
 
   T("Section 1: School information (including enrollment data from classes 1-10)",10,41.5,{b:1,i:1,s:10});
   const H=[12,7,7,7,9,7];let y=44;const Y=[];H.forEach(h=>{Y.push(y);B(10,y,208,h);y+=h});
-  let x=lab("School Name:",12,Y[0]+4.5);WL(d.school,x,Y[0]+4.5,214-x,{s:10},2);
+  let x=lab("School Name:",12,Y[0]+4.5);WL(d.school,x,Y[0]+4.8,214-x,{s:11.5,b:1},2);
   x=lab("Branch Name (in case of private school):",12,Y[1]+4.8);WL(d.branch,x,Y[1]+4.8,214-x,{s:9});
   x=lab("Category (tick one):",12,Y[2]+4.8)+1;
   CATS.forEach((c,i)=>{const bx=x+i*30,by=Y[2]+1.5;B(bx,by,4,4);if(d.cat===c){p.setLineWidth(.6);p.line(bx+.8,by+2.2,bx+1.8,by+3.3);p.line(bx+1.8,by+3.3,bx+3.4,by+.8);p.setLineWidth(.3)}T(c,bx+6,Y[2]+4.8,{s:8.5})});
-  x=lab("Principal/Head Teacher Name:",12,Y[3]+4.8);WL(d.principal,x,Y[3]+4.8,214-x,{s:9});
+  x=lab("Principal/Head Teacher Name:",12,Y[3]+4.8);WL(d.principal,x,Y[3]+5,214-x,{s:11,b:1});
   x=lab("School Address & Contact Number:",12,Y[4]+4);WL(d.address+"  |  Tel: "+d.contact,x,Y[4]+4,214-x,{s:8},2);
   lab("Signature & Stamp:",12,Y[5]+4.8);
   B(226,44,61,14,1);C("Total # of enrolled school-age children in classes 1-10 (school register)",256.5,48,57,{b:1,s:7.5,lh:3.4});
@@ -553,7 +569,7 @@ function makePDF(d,save=true){
   B(160,176,28.5,12);B(188.5,176,28.5,12);V(d.openT,174.2,184.3);V(d.sealed,202.7,184.3);
   B(217,150,70,26);C("Total # of Adverse Events referred to a local health facility",252,155,64,{b:1,s:8.5});B(217,176,70,12);V(d.ae,252,184.3);
   T("Note: Adverse Events are defined as a case of a very ill child requiring attention from medical staff (i.e. persistent nausea, abdominal pain, diarrhea, vomiting, etc.).",10,194,{i:1,s:7.5});
-  p.setTextColor(110);T("Ref: "+d.ref+"   |   Submitted: "+d.local+"   |   Digitally entered by school; Markaz Gujrat-VII",10,203,{s:7});p.setTextColor(0);
+  p.setTextColor(110);T("Ref: "+d.ref+"   |   Submitted: "+d.local+"   |   Digitally entered by school; Rashid Mahmood",10,203,{s:7});p.setTextColor(0);
   if(save)p.save("Deworming_Form2_"+(d.school.replace(/[^\w]+/g,"_").slice(0,40)||"School")+"_"+d.ref+".pdf");
 }
 
@@ -582,7 +598,7 @@ $("prev").onclick=()=>{
   show("pvV");
 };
 $("back").onclick=()=>show("formV");
-$("clr").onclick=()=>{if(confirm("Clear all entries?")){document.querySelectorAll("input,textarea").forEach(e=>{if(e.type==="radio")e.checked=false;else e.value=""});$("errBox").hidden=true}};
+$("clr").onclick=()=>{if(confirm("Clear all entries?")){document.querySelectorAll("input,textarea").forEach(e=>{if(e.type==="radio")e.checked=false;else e.value=""});$("errBox").hidden=true;auto()}};
 $("sub").onclick=async()=>{
   const b=$("sub");b.disabled=true;b.textContent="Submitting…";
   const d={...cur,ref:"DW5-"+Date.now().toString(36).toUpperCase(),ts:new Date().toISOString(),local:new Date().toLocaleString("en-GB")};
@@ -594,6 +610,6 @@ $("sub").onclick=async()=>{
   b.disabled=false;b.textContent="Submit & Download PDF";
 };
 $("again").onclick=()=>makePDF(last);
-$("new").onclick=()=>{document.querySelectorAll("input,textarea").forEach(e=>{if(e.type==="radio")e.checked=false;else e.value=""});show("formV")};
+$("new").onclick=()=>{document.querySelectorAll("input,textarea").forEach(e=>{if(e.type==="radio")e.checked=false;else e.value=""});auto();show("formV")};
 note();flush();
 </script></body></html>
