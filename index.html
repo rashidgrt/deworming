@@ -570,7 +570,7 @@ function makePDF(d,save=true){
   B(160,176,28.5,12);B(188.5,176,28.5,12);V(d.openT,174.2,184.3);V(d.sealed,202.7,184.3);
   B(217,150,70,26);C("Total # of Adverse Events referred to a local health facility",252,155,64,{b:1,s:8.5});B(217,176,70,12);V(d.ae,252,184.3);
   T("Note: Adverse Events are defined as a case of a very ill child requiring attention from medical staff (i.e. persistent nausea, abdominal pain, diarrhea, vomiting, etc.).",10,194,{i:1,s:7.5});
-  p.setTextColor(110);T("Ref: "+d.ref+"   |   Submitted: "+d.local+"   |   Digitally entered by school; Markaz Gujrat-VII",10,203,{s:7});p.setTextColor(0);
+  p.setTextColor(110);T("Ref: "+d.ref+"   |   Submitted: "+d.local+"   |   Digitally entered by school; AEO Gujrat-VII",10,203,{s:7});p.setTextColor(0);
   if(save)p.save("Deworming_Form2_"+(d.school.replace(/[^\w]+/g,"_").slice(0,40)||"School")+"_"+d.ref+".pdf");
 }
 
