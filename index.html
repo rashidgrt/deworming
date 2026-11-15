@@ -26,6 +26,11 @@ button.sec{background:#fff;color:var(--g);border:1px solid var(--g)}button:disab
 .sec{font-style:italic;font-weight:700;margin:12px 0 6px}
 table.pv{width:100%;border-collapse:collapse;margin-bottom:8px}.pv td,.pv th{border:1px solid #333;padding:6px 8px;font-size:13px}.pv th{background:#d9d9d9}.c{text-align:center}
 .big{font-size:17px}
+.combo{position:relative}.combo input{padding-right:56px}
+button.cbtn{position:absolute;right:0;top:0;bottom:0;width:50px;padding:0;background:#e4f5ec;color:var(--g);font-size:18px;border:1px solid #9fb0a8;border-radius:0 7px 7px 0}
+.panel{position:absolute;left:0;right:0;top:100%;z-index:30;margin-top:3px;max-height:min(320px,48vh);overflow-y:auto;-webkit-overflow-scrolling:touch;background:#fff;border:2px solid var(--g);border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.18)}
+.panel div{padding:13px 12px;border-bottom:1px solid #e3ebe6;font-size:15px;cursor:pointer}.panel div:active{background:#e4f5ec}
+.panel .info{background:#f3f6f4;color:#4a5b53;font-size:13px;cursor:default;position:sticky;top:0}
 #school,#principal{font-size:18px;font-weight:700}input[readonly]{background:#eef3f0;color:#35483f}
 </style></head><body>
 <header><h1>Punjab Deworming Initiative (Round 5) – FORM 2</h1>
@@ -41,7 +46,7 @@ table.pv{width:100%;border-collapse:collapse;margin-bottom:8px}.pv td,.pv th{bor
 <div><label for="tdate">Training Date *</label><select id="tdate"></select></div>
 <div><label for="cls">Class *</label><select id="cls"></select></div>
 <div class="full hint" style="margin-top:-4px">Tehsil, Training Venue, Training Date and Class are saved in the Google Sheet only; they do not appear on the PDF.</div>
-<div class="full"><label for="school">School Name *</label><input type="text" id="school" list="schoolList" autocomplete="off" placeholder="Select from list or type school name"><datalist id="schoolList"></datalist><div class="hint" id="schHint"></div></div>
+<div class="full"><label for="school">School Name *</label><div class="combo" id="combo"><input type="text" id="school" autocomplete="off" placeholder="Tap ▼ to choose, or type school name"><button type="button" class="cbtn" id="schBtn" aria-label="Show school list">▼</button><div class="panel" id="schPanel" hidden></div></div><div class="hint" id="schHint"></div></div>
 <div class="full"><label for="branch">Branch Name (in case of private school)</label><input type="text" id="branch" autocomplete="off"></div>
 <div class="full"><label>Category (tick one) *</label><div class="cats" id="cats">
 <label><input type="radio" name="cat" value="Public school">Public school</label>
@@ -524,6 +529,26 @@ function auto(){
 }
 ["recv","used","wasted"].forEach(i=>$(i).addEventListener("input",auto));
 $("openT").addEventListener("input",()=>{manual=$("openT").value.trim()!=="";if(manual)$("openHint").textContent="Edited manually – clear this box to auto-calculate again.";else auto()});
+let schList=[];
+const panel=$("schPanel");
+function closePanel(){panel.hidden=true}
+function renderPanel(q){
+  const all=schList,qq=(q||"").trim().toLowerCase(),m=qq?all.filter(s=>s.toLowerCase().includes(qq)):all,MAX=400;
+  let t="";
+  if(!all.length)t='<div class="info">Select Tehsil, Training Venue, Training Date and Class first to load the school list. You can also just type the school name.</div>';
+  else{
+    t='<div class="info">'+(qq?m.length+" match"+(m.length===1?"":"es"):all.length+" schools")+" – tap to select, or keep typing your own name</div>";
+    if(!m.length)t+='<div class="info">No match – the name you typed will be used.</div>';
+    t+=m.slice(0,MAX).map((s,i)=>`<div data-i="${i}">${esc(s)}</div>`).join("");
+    if(m.length>MAX)t+='<div class="info">… '+(m.length-MAX)+" more – type to narrow the list</div>";
+  }
+  panel.innerHTML=t;panel._m=m;panel.hidden=false;
+}
+panel.addEventListener("click",e=>{const d=e.target.closest("[data-i]");if(!d)return;$("school").value=panel._m[+d.dataset.i];$("school").classList.remove("bad");closePanel()});
+$("schBtn").addEventListener("click",()=>{if(!panel.hidden){closePanel();return}renderPanel("");$("school").scrollIntoView({block:"center",behavior:"smooth"})});
+$("school").addEventListener("input",e=>{if(schList.length)renderPanel(e.target.value);else closePanel()});
+$("school").addEventListener("keydown",e=>{if(e.key==="Escape")closePanel()});
+document.addEventListener("click",e=>{if(!$("combo").contains(e.target))closePanel()});
 const keys=o=>o?Object.keys(o):[];
 function opts(id,list,ph){
   const s=$(id),cur=s.value;
@@ -537,8 +562,8 @@ function fillDate(){opts("tdate",keys(nodeV()),"— Select Training Date —");f
 function fillClass(){opts("cls",keys(nodeD()),"— Select Class —");fillSchools()}
 function fillSchools(){
   const l=(nodeD()||{})[$("cls").value]||[];
-  $("schoolList").innerHTML=l.map(s=>`<option value="${esc(s)}">`).join("");
-  $("schHint").textContent=(l.length?l.length+" schools listed for this Tehsil / venue / date / class – pick one from the list or type/edit the name freely. ":"Select Tehsil, Training Venue, Training Date and Class to load the school list (you can still type a name). ")+"Use English letters (the PDF supports English only).";
+  schList=l;closePanel();
+  $("schHint").textContent=(l.length?l.length+" schools listed for this Tehsil / venue / date / class – tap ▼ to choose one, or type/edit the name freely. ":"Select Tehsil, Training Venue, Training Date and Class to load the school list (you can still type a name). ")+"Use English letters (the PDF supports English only).";
 }
 $("tehsil").addEventListener("change",fillVenue);$("venue").addEventListener("change",fillDate);$("tdate").addEventListener("change",fillClass);$("cls").addEventListener("change",fillSchools);
 function defaults(){fillVenue();$("sealed").value="0";$("ae").value="0";manual=false;usedManual=false;autoUsed()}
